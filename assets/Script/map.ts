@@ -1,6 +1,7 @@
 import { _decorator, Component, input, Input, EventKeyboard, KeyCode, TiledMap, TiledLayer, Prefab, instantiate, TiledObjectGroup, Vec2, math } from 'cc';
 const { ccclass, property } = _decorator;
 import { Bomb } from './bomb';
+import { Bombe1 } from "./bombe1";
 import { Player } from "./player";
 import { Bettle } from "./bettle";
 
@@ -129,13 +130,6 @@ export class Map extends Component {
             if (null == bombComp)
                 return;
 
-            for (let i = 0; i < this.compBettle.length; ++i) {
-                let bombComp = this.compPlayer._bomb[index].getComponent(Bomb);
-                if (bombComp.blash(this.compBettle[i])) {
-                    this.compBettle[i].beKilled();
-                }
-            }
-
             if (this.woodLayer.getTileGIDAt(bombComp._tiledPosX, bombComp._tiledPosY + 1)) {
                 this.woodLayer.setTileGIDAt(0, bombComp._tiledPosX, bombComp._tiledPosY + 1);
             }
@@ -156,6 +150,29 @@ export class Map extends Component {
             this.compPlayer._bomb[index].removeFromParent();
             this.compPlayer._bomb[index].destroy();
             this.compPlayer._bomb[index] = null;
+            this.woodLayer.markForUpdateRenderData();
+        });
+
+        this.woodLayer.node.on("onFinishBombE1", (index: number) => {
+            if (-1 == index)
+                return;
+
+            let bombComp = this.compPlayer._bombEffects[index].getComponent(Bombe1);
+            if (null == bombComp)
+                return;
+
+            console.log("bomb effect pos:", bombComp._tiledPos);
+            for (let i = 0; i < this.compBettle.length; ++i) {
+                console.log("bettle pos:", i, this.compBettle[i]._tiledPos);
+                if (bombComp.blash(this.compBettle[i])) {
+                    this.compBettle[i].beKilled();
+                }
+            }
+
+            this.woodLayer.removeUserNode(this.compPlayer._bombEffects[index]);
+            this.compPlayer._bombEffects[index].removeFromParent();
+            this.compPlayer._bombEffects[index].destroy();
+            this.compPlayer._bombEffects[index] = null;
             this.woodLayer.markForUpdateRenderData();
         });
     }

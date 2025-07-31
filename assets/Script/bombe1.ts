@@ -1,5 +1,6 @@
 import { _decorator, Component, Vec2 } from 'cc';
 const { ccclass, property } = _decorator;
+import { Bettle } from './bettle';
 
 @ccclass('Bombe1')
 export class Bombe1 extends Component {
@@ -21,11 +22,17 @@ export class Bombe1 extends Component {
         
     }
 
-    onFinishBomb() {
-        //this.scheduleOnce(() => {
-        //    this.node.removeFromParent();
-        //    this.node.destroy();
-        //}, 0);
+    blash(bettle: Bettle): boolean {
+        if (this._tiledPos.x == bettle._tiledPos.x && this._tiledPos.y == bettle._tiledPos.y)
+            return true;
+
+        return false;
+    }
+
+    onFinishBombE1() {
+        this.scheduleOnce(() => {
+            this.node.getParent().emit("onFinishBombE1", this._index);
+        }, 0);
     }
 }
 

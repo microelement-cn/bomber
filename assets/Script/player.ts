@@ -2,6 +2,7 @@ import { _decorator, Component, Node, input, Input, Prefab, EventKeyboard, KeyCo
 const { ccclass, property } = _decorator;
 import { Map } from './map';
 import { Bomb } from './bomb';
+import { Bombe1 } from './bombe1';
 
 
 @ccclass('player')
@@ -17,6 +18,7 @@ export class Player extends Component {
     _efftPrefab: Prefab = null!;
 
     _bomb: Node[] = null;
+    _bombEffects: Node[] = null;
 
     init(tilesPos: Vec2, mainLayer: TiledLayer, woodLayer: TiledLayer, bombPrefab: Prefab, efftPrefab: Prefab) {
         this._tiledPosX = tilesPos.x;
@@ -31,6 +33,7 @@ export class Player extends Component {
         this._worldPosY = tiledOffset.y + Map.offsetY;
 
         this._bomb = new Array<Node>();
+        this._bombEffects = new Array<Node>();
     }
 
     move(x: number, y: number) : boolean {
@@ -84,12 +87,19 @@ export class Player extends Component {
         }
     }
 
-    findEmptyPos(): number {
+    private findBombEmptyPos(): number {
         for (let i = 0; i < this._bomb.length; ++i) {
             if (this._bomb[i] == null)
                 return i;
         }
+        return -1;
+    }
 
+    private findEffsEmptyPos(): number {
+        for (let i = 0; i < this._bombEffects.length; ++i) {
+            if (this._bombEffects[i] == null)
+                return i;
+        }
         return -1;
     }
 
@@ -98,7 +108,7 @@ export class Player extends Component {
         this._woodLayer.addUserNode(bomb);
         bomb.setWorldPosition(this._worldPosX, this._worldPosY, 0);
 
-        let index = this.findEmptyPos();
+        let index = this.findBombEmptyPos();
         if (-1 == index) {
             index = this._bomb.length;
             this._bomb.push(bomb);
@@ -108,8 +118,7 @@ export class Player extends Component {
         }
 
         let bombComp = bomb.getComponent(Bomb);
-        bombComp.init(index, this._tiledPosX, this._tiledPosY);
-        console.log("createBomb pos:", this._worldPosX, this._worldPosY);
+        bombComp.init(index, this._tiledPosX, this._tiledPosY, this);
     }
 
     private createBombEffect(tiledPosX: number, tiledPosY: number) {
@@ -118,28 +127,40 @@ export class Player extends Component {
 
         let tiledPos: Vec2 = new Vec2(tiledPosX, tiledPosY);
         let tiledOffset = this._woodLayer.getPositionAt(tiledPos);
-        console.log("createBombEffect pos:", tiledOffset);
         bombEffect.setWorldPosition(tiledOffset.x + Map.offsetX, tiledOffset.y + Map.offsetY, 0);
-        this._woodLayer.markForUpdateRenderData();
+        let index = this.findEffsEmptyPos();
+        if (-1 == index) {
+            index = this._bombEffects.length;
+            this._bombEffects.push(bombEffect);
+        }
+        else {
+            this._bombEffects[index] = bombEffect;
+        }
+        let bombE1Comp = bombEffect.getComponent(Bombe1);
+        bombE1Comp.init(index, tiledPosX, tiledPosY);
     }
 
     dropBomb() {
         this.createBomb();
+    }
 
-        if (!(this._mainLayer.getTileGIDAt(this._tiledPosX, this._tiledPosY - 1) || this._woodLayer.getTileGIDAt(this._tiledPosX, this._tiledPosY - 1))) {
-            this.createBombEffect(this._tiledPosX, this._tiledPosY - 1);
+    dropEffects(tiledPosX: number, tiledPosY: number) {
+        this.createBombEffect(tiledPosX, tiledPosY);
+
+        if (!(this._mainLayer.getTileGIDAt(tiledPosX, tiledPosY - 1) || this._woodLayer.getTileGIDAt(tiledPosX, tiledPosY - 1))) {
+            this.createBombEffect(tiledPosX, tiledPosY - 1);
         }
 
-        if (!(this._mainLayer.getTileGIDAt(this._tiledPosX, this._tiledPosY + 1) || this._woodLayer.getTileGIDAt(this._tiledPosX, this._tiledPosY + 1))) {
-            this.createBombEffect(this._tiledPosX, this._tiledPosY + 1);
+        if (!(this._mainLayer.getTileGIDAt(tiledPosX, tiledPosY + 1) || this._woodLayer.getTileGIDAt(tiledPosX, tiledPosY + 1))) {
+            this.createBombEffect(tiledPosX, tiledPosY + 1);
         }
 
-        if (!(this._mainLayer.getTileGIDAt(this._tiledPosX - 1, this._tiledPosY) || this._woodLayer.getTileGIDAt(this._tiledPosX - 1, this._tiledPosY))) {
-            this.createBombEffect(this._tiledPosX - 1, this._tiledPosY);
+        if (!(this._mainLayer.getTileGIDAt(tiledPosX - 1, tiledPosY) || this._woodLayer.getTileGIDAt(tiledPosX - 1, tiledPosY))) {
+            this.createBombEffect(tiledPosX - 1, tiledPosY);
         }
 
-        if (!(this._mainLayer.getTileGIDAt(this._tiledPosX + 1, this._tiledPosY) || this._woodLayer.getTileGIDAt(this._tiledPosX + 1, this._tiledPosY))) {
-            this.createBombEffect(this._tiledPosX + 1, this._tiledPosY);
+        if (!(this._mainLayer.getTileGIDAt(tiledPosX + 1, tiledPosY) || this._woodLayer.getTileGIDAt(tiledPosX + 1, tiledPosY))) {
+            this.createBombEffect(tiledPosX + 1, tiledPosY);
         }
     }
 
