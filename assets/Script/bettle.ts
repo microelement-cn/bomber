@@ -7,12 +7,13 @@ import { Player } from './player';
 @ccclass('Bettle')
 export class Bettle extends Component {
     _tiledPos: Vec2 = new Vec2(0, 0);      //当前瓦片地图坐标 当前所处位置
+    _birthPos: Vec2 = new Vec2(0, 0);      //出生时瓦片地图坐标
     _sourcePos: Vec2 = new Vec2(0, 0);     //当前位置世界坐标 要走到的位置
     _targetPos: Vec2 = new Vec2(0, 0);     //目标位置世界坐标 要走到的位置
-    _birthPos: Vec2 = new Vec2(0, 0);      //出生时瓦片地图坐标
+    _targetTiledPos: Vec2 = new Vec2(0, 0);
     _state: BettleState = BettleState.Idle;
     _moveDiret: number = 0;
-    _moveSpeed: number = 5;
+    _moveSpeed: number = 10;
     _moveTimer: number = 0;
     _moveState: MoveSubState = MoveSubState.MoveBoot;
 
@@ -88,7 +89,7 @@ export class Bettle extends Component {
         return true;
     }
 
-    private setTargetPos() : boolean {
+    private setTargetPos(): boolean {
         let targetPos = new Vec2(0, 0);
         switch (this._moveDiret) {
             case MoveDirType.MoveDirUp:
@@ -121,6 +122,7 @@ export class Bettle extends Component {
         if (targetPos.y < 0 || targetPos.y >= this._mapSize.height)
             return false;
 
+        this._targetTiledPos = Object.assign({}, targetPos);
         //console.log("SetTargetPos targetTiledPos:", targetPos);
         let targetOffset = this._mainLayer.getPositionAt(targetPos);
         //console.log("SetTargetPos targetOffset:", targetOffset);
@@ -151,24 +153,26 @@ export class Bettle extends Component {
 
         //console.log("TargetPos:", this._targetPos);
 
-        this.setMoveTimer(deltaTime);
+        //this.setMoveTimer(deltaTime);
         this.setMoveState(MoveSubState.Moveing);
         //console.log("moveState:", this._moveState);
     }
 
     private moveBusy(deltaTime: number) {
-        this.setMoveTimer(deltaTime);
-        if (this._moveTimer < 0.8) {
+        //this.setMoveTimer(deltaTime);
+
+        if (this._compPlayer.isBomb(this._targetTiledPos.x, this._targetTiledPos.y)) {
+            this.setMoveState(MoveSubState.MoveEnd);
             return;
         }
 
-        let distance = this._moveTimer * this._moveSpeed;
-        this._moveTimer = 0;
+        let distance = deltaTime * this._moveSpeed;
+        //this._moveTimer = 0;
         switch (this._moveDiret) {
             case MoveDirType.MoveDirUp:
                 {
-                    if (this._sourcePos.y > this._targetPos.y) {
-                        this._sourcePos.y -= distance;
+                    if (this._sourcePos.y < this._targetPos.y) {
+                        this._sourcePos.y += distance;
                     }
                     else {
                         this._tiledPos.y -= 1;
@@ -178,13 +182,17 @@ export class Bettle extends Component {
                 break;
             case MoveDirType.MoveDirDown:
                 {
-                    if (this._sourcePos.y < this._targetPos.y) {
-                        this._sourcePos.y += distance;
+                    //console.log("b move down:", this._sourcePos, this._targetPos, this._tiledPos);
+
+                    if (this._sourcePos.y > this._targetPos.y) {
+                        this._sourcePos.y -= distance;
                     }
                     else {
                         this._tiledPos.y += 1;
                         this.setMoveState(MoveSubState.MoveEnd);
                     }
+
+                    //console.log("e move down:", this._sourcePos, this._targetPos, this._tiledPos);
                 }
                 break;
             case MoveDirType.MoveDirLeft:
@@ -213,15 +221,18 @@ export class Bettle extends Component {
                 break;
         }
 
+        if(this._state != BettleState.Move)
+            return;
+
         if (this._moveState == MoveSubState.MoveEnd) {
-            this._sourcePos = this._targetPos;
-            this.node.setWorldPosition(this._sourcePos.x, this._sourcePos.y, 0);
-            this._mainLayer.markForUpdateRenderData();
+            this._sourcePos = Object.assign({}, this._targetPos);
         }
+        this.node.setWorldPosition(this._sourcePos.x, this._sourcePos.y, 0);
+        this._mainLayer.markForUpdateRenderData();
     }
 
     private moveDead(deltaTime: number) {
-        this.setMoveTimer(deltaTime);
+        //this.setMoveTimer(deltaTime);
         this.setMoveState(MoveSubState.MoveBoot);
     }
 

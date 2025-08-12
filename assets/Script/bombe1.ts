@@ -15,11 +15,9 @@ export class Bombe1 extends Component {
     }
 
     start() {
-
     }
 
-    update(deltaTime: number) {
-        
+    update(deltaTime: number) {        
     }
 
     blash(bettle: Bettle): boolean {

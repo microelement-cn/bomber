@@ -1,36 +1,41 @@
-import { _decorator, Component, Node, input, Input, Prefab, EventKeyboard, KeyCode, Vec2, TiledLayer, instantiate } from 'cc';
+import { _decorator, Component, Node, input, Input, Prefab, EventKeyboard, KeyCode, Vec2, TiledLayer, instantiate, Animation } from 'cc';
 const { ccclass, property } = _decorator;
 import { Map } from './map';
 import { Bomb } from './bomb';
 import { Bombe1 } from './bombe1';
+import { PStateType } from './define'
 
+let MOVE_TIME = 100;
 
 @ccclass('player')
 export class Player extends Component {
 
-    _tiledPosX: number = 0;
-    _tiledPosY: number = 0;
-    _worldPosX: number = 0;
-    _worldPosY: number = 0;
-    _mainLayer: TiledLayer = null!;
-    _woodLayer: TiledLayer = null!;
+    _keyPusher: number = 0;
+    _moveTimer: number = 0;
+    _tiledPos: Vec2 = new Vec2(0, 0);
+    _worldPos: Vec2 = new Vec2(0, 0);
     _bombPrefab: Prefab = null!;
     _efftPrefab: Prefab = null!;
+    _mainLayer: TiledLayer = null!;
+    _woodLayer: TiledLayer = null!;
 
+    _bombSize: number = 1;
     _bomb: Node[] = null;
     _bombEffects: Node[] = null;
 
-    init(tilesPos: Vec2, mainLayer: TiledLayer, woodLayer: TiledLayer, bombPrefab: Prefab, efftPrefab: Prefab) {
-        this._tiledPosX = tilesPos.x;
-        this._tiledPosY = tilesPos.y;
+    _playerState: PStateType = PStateType.Player_Idle;
+
+    init(tiledPos: Vec2, mainLayer: TiledLayer, woodLayer: TiledLayer, bombPrefab: Prefab, efftPrefab: Prefab) {
+        this._tiledPos.x = tiledPos.x;
+        this._tiledPos.y = tiledPos.y;
         this._mainLayer = mainLayer;
         this._woodLayer = woodLayer;
         this._bombPrefab = bombPrefab;
         this._efftPrefab = efftPrefab;
 
-        let tiledOffset = this._mainLayer.getPositionAt(tilesPos);
-        this._worldPosX = tiledOffset.x + Map.offsetX;
-        this._worldPosY = tiledOffset.y + Map.offsetY;
+        let tiledOffset = this._mainLayer.getPositionAt(tiledPos);
+        this._worldPos.x = tiledOffset.x + Map.offsetX;
+        this._worldPos.y = tiledOffset.y + Map.offsetY;
 
         this._bomb = new Array<Node>();
         this._bombEffects = new Array<Node>();
@@ -45,46 +50,10 @@ export class Player extends Component {
 
         let tiledPos = new Vec2(x, y);
         let tiledOffset = this._mainLayer.getPositionAt(tiledPos);
-        this._worldPosX = tiledOffset.x + Map.offsetX;
-        this._worldPosY = tiledOffset.y + Map.offsetY;
-        this.node.setWorldPosition(this._worldPosX, this._worldPosY, 0);
+        this._worldPos.x = tiledOffset.x + Map.offsetX;
+        this._worldPos.y = tiledOffset.y + Map.offsetY;
+        this.node.setWorldPosition(this._worldPos.x, this._worldPos.y, 0);
         return true;
-    }
-
-    goLeft() {
-        let x = this._tiledPosX;
-        let y = this._tiledPosY;
-        if (this.move(--x, y)) {
-            this._tiledPosX = x;
-            this._tiledPosY = y;
-        }
-    }
-
-    goDown() {
-        let x = this._tiledPosX;
-        let y = this._tiledPosY;
-        if (this.move(x, ++y)) {
-            this._tiledPosX = x;
-            this._tiledPosY = y;
-        }
-    }
-
-    goRight() {
-        let x = this._tiledPosX;
-        let y = this._tiledPosY;
-        if (this.move(++x, y)) {
-            this._tiledPosX = x;
-            this._tiledPosY = y;
-        }
-    }
-
-    goUp() {
-        let x = this._tiledPosX;
-        let y = this._tiledPosY;
-        if (this.move(x, --y)) {
-            this._tiledPosX = x;
-            this._tiledPosY = y;
-        }
     }
 
     private findBombEmptyPos(): number {
@@ -106,7 +75,7 @@ export class Player extends Component {
     private createBomb() {
         let bomb = instantiate(this._bombPrefab);
         this._woodLayer.addUserNode(bomb);
-        bomb.setWorldPosition(this._worldPosX, this._worldPosY, 0);
+        bomb.setWorldPosition(this._worldPos.x, this._worldPos.y, 0);
 
         let index = this.findBombEmptyPos();
         if (-1 == index) {
@@ -118,7 +87,7 @@ export class Player extends Component {
         }
 
         let bombComp = bomb.getComponent(Bomb);
-        bombComp.init(index, this._tiledPosX, this._tiledPosY, this);
+        bombComp.init(index, this._tiledPos.x, this._tiledPos.y, this);
     }
 
     private createBombEffect(tiledPosX: number, tiledPosY: number) {
@@ -169,8 +138,7 @@ export class Player extends Component {
             if (item != null) {
                 let compBomb = item.getComponent(Bomb);
                 if (compBomb != undefined) {
-                    if (compBomb._tiledPosX == tx &&
-                        compBomb._tiledPosY == ty)
+                    if (compBomb._tiledPosX == tx && compBomb._tiledPosY == ty)
                         return true;
                 }
             }
@@ -178,23 +146,32 @@ export class Player extends Component {
         return false;
     }
 
+    private goKeyCode(keyCode: number) {
+        if (this._moveTimer != 0)
+            return;
+
+        this._moveTimer = Date.now();
+        this._keyPusher = keyCode;
+        this.setPlayerState(PStateType.Player_Move);
+    }
+
     onKeyDown(event: EventKeyboard) {
         switch (event.keyCode) {
             case KeyCode.KEY_A:
             case KeyCode.ARROW_LEFT:
-                this.goLeft();
+                this.goKeyCode(KeyCode.ARROW_LEFT);
                 break;
             case KeyCode.KEY_S:
             case KeyCode.ARROW_DOWN:
-                this.goDown();
+                this.goKeyCode(KeyCode.ARROW_DOWN);
                 break;
             case KeyCode.KEY_D:
             case KeyCode.ARROW_RIGHT:
-                this.goRight();
+                this.goKeyCode(KeyCode.ARROW_RIGHT);
                 break;
             case KeyCode.KEY_W:
             case KeyCode.ARROW_UP:
-                this.goUp();
+                this.goKeyCode(KeyCode.ARROW_UP);
                 break;
             case KeyCode.SPACE:
                 this.dropBomb();
@@ -204,26 +181,246 @@ export class Player extends Component {
         }
     }
 
-    onKeyUp(event: EventKeyboard) {
+    private setPlayerState(state: PStateType) {
+        if (this._playerState == state)
+            return;
 
+        this._playerState = state;
+    }
+
+    private resetKeyPusher() {
+        this._keyPusher = 0;
+        this._moveTimer = 0;
+        this.setPlayerState(PStateType.Player_Idle);
+    }
+
+    private goLeftOver() {
+        if (this._keyPusher != KeyCode.ARROW_LEFT)
+            return;
+
+        this.resetKeyPusher();
+    }
+
+    private goDownOver() {
+        if (this._keyPusher != KeyCode.ARROW_DOWN)
+            return;
+
+        this.resetKeyPusher();
+    }
+
+    private goRightOver() {
+        if (this._keyPusher != KeyCode.ARROW_RIGHT)
+            return;
+
+        this.resetKeyPusher();
+    }
+
+    private goUpOver() {
+        if (this._keyPusher != KeyCode.ARROW_UP)
+            return;
+
+        this.resetKeyPusher();
+    }
+
+    onKeyUp(event: EventKeyboard) {
+        switch (event.keyCode) {
+            case KeyCode.KEY_A:
+            case KeyCode.ARROW_LEFT:
+                this.goLeftOver();
+                break;
+            case KeyCode.KEY_S:
+            case KeyCode.ARROW_DOWN:
+                this.goDownOver();
+                break;
+            case KeyCode.KEY_D:
+            case KeyCode.ARROW_RIGHT:
+                this.goRightOver();
+                break;
+            case KeyCode.KEY_W:
+            case KeyCode.ARROW_UP:
+                this.goUpOver();
+                break;
+            case KeyCode.SPACE:
+                //this.dropBomb();
+                break;
+            default:
+                break;
+        }
+    }
+
+    private goLeftPressing() {
+        if (this._keyPusher != KeyCode.ARROW_LEFT)
+            return;
+
+        this.goKeyCode(KeyCode.ARROW_LEFT);
+
+        let curTimer = Date.now();
+        if (curTimer - this._moveTimer < MOVE_TIME)
+            return;
+
+        let tiledOffset = this._mainLayer.getPositionAt(this._tiledPos);
+        let curWorldX = tiledOffset.x + Map.offsetX;
+        let curWorldY = tiledOffset.y + Map.offsetY;
+
+        let x = this._tiledPos.x;
+        let y = this._tiledPos.y;
+        if (this.move(--x, y)) {
+            this._tiledPos.x = x;
+            this._tiledPos.y = y;
+        }
+
+        this._moveTimer = curTimer;
+    }
+
+    private goDownPressing() {
+        if (this._keyPusher != KeyCode.ARROW_DOWN)
+            return;
+
+        let curTimer = Date.now();
+        if (curTimer - this._moveTimer < MOVE_TIME)
+            return;
+
+        let x = this._tiledPos.x;
+        let y = this._tiledPos.y;
+        if (this.move(x, ++y)) {
+            this._tiledPos.x = x;
+            this._tiledPos.y = y;
+        }
+
+        this._moveTimer = curTimer;
+    }
+
+    private goRightPressing() {
+        if (this._keyPusher != KeyCode.ARROW_RIGHT)
+            return;
+
+        this.goKeyCode(KeyCode.ARROW_RIGHT);
+
+        let curTimer = Date.now();
+        if (curTimer - this._moveTimer < MOVE_TIME)
+            return;
+
+        let x = this._tiledPos.x;
+        let y = this._tiledPos.y;
+        if (this.move(++x, y)) {
+            this._tiledPos.x = x;
+            this._tiledPos.y = y;
+        }
+
+        this._moveTimer = curTimer;
+    }
+
+    private goUpPressing() {
+        if (this._keyPusher != KeyCode.ARROW_UP)
+            return;
+
+        let curTimer = Date.now();
+        if (curTimer - this._moveTimer < MOVE_TIME)
+            return;
+
+        let x = this._tiledPos.x;
+        let y = this._tiledPos.y;
+        if (this.move(x, --y)) {
+            this._tiledPos.x = x;
+            this._tiledPos.y = y;
+        }
+        this._moveTimer = curTimer;
+    }
+
+    onKeyPressing(event: EventKeyboard) {
+        switch (event.keyCode) {
+            case KeyCode.KEY_A:
+            case KeyCode.ARROW_LEFT:
+                this.goLeftPressing();
+                break;
+            case KeyCode.KEY_S:
+            case KeyCode.ARROW_DOWN:
+                this.goDownPressing();
+                break;
+            case KeyCode.KEY_D:
+            case KeyCode.ARROW_RIGHT:
+                this.goRightPressing();
+                break;
+            case KeyCode.KEY_W:
+            case KeyCode.ARROW_UP:
+                this.goUpPressing();
+                break;
+            case KeyCode.SPACE:
+                break;
+            default:
+                break;
+        }
     }
 
     onLoad() {
-        input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.on(Input.EventType.KEY_UP, this.onKeyUp, this);
+        input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
+        input.on(Input.EventType.KEY_PRESSING, this.onKeyPressing, this);
     }
 
     onDestory() {
-        input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.off(Input.EventType.KEY_UP, this.onKeyUp, this);
+        input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
+        input.off(Input.EventType.KEY_PRESSING, this.onKeyPressing, this);
     }
 
     start() {
 
     }
 
+    private playerIdleState(idleAnimation: Animation, deltaTime: number) {
+        if (idleAnimation == undefined)
+            return;
+
+        const isPlaying = idleAnimation.getState('foxidle')?.isPlaying;
+        if (isPlaying)
+            return;
+
+        idleAnimation.play('foxidle');
+    }
+
+    private playerMoveState(moveAnimation: Animation, deltaTime: number) {
+        if (moveAnimation == undefined)
+            return;
+
+        const isPlaying = moveAnimation.getState('foxrun')?.isPlaying;
+        if (isPlaying)
+            return;
+
+        moveAnimation.play('foxrun');
+    }
+
+    private playerDeadState(deadAnimation: Animation, deltaTime: number) {
+        if (deadAnimation == undefined)
+            return;
+        const isPlaying = deadAnimation.getState('foxdead')?.isPlaying;
+        if (isPlaying)
+            return;
+
+        deadAnimation.play('foxdead');
+    }
+
     update(deltaTime: number) {
-        
+        let animation = this.node.getComponent(Animation);
+        switch (this._playerState) {
+            case PStateType.Player_Idle:
+                {
+                    this.playerIdleState(animation, deltaTime);
+                }
+                break;
+            case PStateType.Player_Move:
+                {
+                    this.playerMoveState(animation, deltaTime);
+                }
+                break;
+            case PStateType.Player_Dead:
+                {
+                    this.playerDeadState(animation, deltaTime);
+                }
+                break;
+            default:
+                break;
+        }
     }
 }
 

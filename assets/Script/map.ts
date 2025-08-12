@@ -161,9 +161,7 @@ export class Map extends Component {
             if (null == bombComp)
                 return;
 
-            console.log("bomb effect pos:", bombComp._tiledPos);
             for (let i = 0; i < this.compBettle.length; ++i) {
-                console.log("bettle pos:", i, this.compBettle[i]._tiledPos);
                 if (bombComp.blash(this.compBettle[i])) {
                     this.compBettle[i].beKilled();
                 }

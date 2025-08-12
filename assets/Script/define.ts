@@ -22,4 +22,12 @@ export enum MoveDirType {
     MoveDirLeft = 2,
     MoveDirRight = 3,
 }
+
+export enum PStateType {
+    Player_Invalid = -1,
+    Player_Idle = 0,
+    Player_Move = 1,
+    Player_Dead = 2,
+}
+
 
