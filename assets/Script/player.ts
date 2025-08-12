@@ -10,6 +10,8 @@ let MOVE_TIME = 100;
 @ccclass('player')
 export class Player extends Component {
 
+    _counter: number = 0;
+    _moveSpeed: number = 0.1;
     _keyPusher: number = 0;
     _moveTimer: number = 0;
     _tiledPos: Vec2 = new Vec2(0, 0);
@@ -39,6 +41,19 @@ export class Player extends Component {
 
         this._bomb = new Array<Node>();
         this._bombEffects = new Array<Node>();
+    }
+
+    canMove(x: number, y: number): boolean {
+        console.log(x, y);
+        if (this._mainLayer.getTileGIDAt(x, y)) 
+            return false;
+
+        console.log("mainLayer:", x, y);
+        if (this._woodLayer.getTileGIDAt(x, y))
+            return false;
+
+        console.log("woodLayer:", x, y);
+        return true;
     }
 
     move(x: number, y: number) : boolean {
@@ -159,19 +174,23 @@ export class Player extends Component {
         switch (event.keyCode) {
             case KeyCode.KEY_A:
             case KeyCode.ARROW_LEFT:
-                this.goKeyCode(KeyCode.ARROW_LEFT);
+                this._keyPusher = KeyCode.ARROW_LEFT;
+                //this.goKeyCode(KeyCode.ARROW_LEFT);
                 break;
             case KeyCode.KEY_S:
             case KeyCode.ARROW_DOWN:
-                this.goKeyCode(KeyCode.ARROW_DOWN);
+                this._keyPusher = KeyCode.ARROW_DOWN;
+                //this.goKeyCode(KeyCode.ARROW_DOWN);
                 break;
             case KeyCode.KEY_D:
             case KeyCode.ARROW_RIGHT:
-                this.goKeyCode(KeyCode.ARROW_RIGHT);
+                this._keyPusher = KeyCode.ARROW_RIGHT;
+                //this.goKeyCode(KeyCode.ARROW_RIGHT);
                 break;
             case KeyCode.KEY_W:
             case KeyCode.ARROW_UP:
-                this.goKeyCode(KeyCode.ARROW_UP);
+                this._keyPusher = KeyCode.ARROW_UP;
+                //this.goKeyCode(KeyCode.ARROW_UP);
                 break;
             case KeyCode.SPACE:
                 this.dropBomb();
@@ -248,6 +267,15 @@ export class Player extends Component {
         }
     }
 
+    getWorldPosAtTiled(x: number, y: number): Vec2 {
+        let tiledPos = new Vec2(x, y);
+        let tiledOffset = this._mainLayer.getPositionAt(tiledPos);
+        let worldPos = new Vec2(0, 0);
+        worldPos.x = tiledOffset.x + Map.offsetX;
+        worldPos.y = tiledOffset.y + Map.offsetY;
+        return worldPos;
+    }
+
     private goLeftPressing() {
         if (this._keyPusher != KeyCode.ARROW_LEFT)
             return;
@@ -255,20 +283,27 @@ export class Player extends Component {
         this.goKeyCode(KeyCode.ARROW_LEFT);
 
         let curTimer = Date.now();
-        if (curTimer - this._moveTimer < MOVE_TIME)
-            return;
+        let deltTime = curTimer - this._moveTimer;
+        let distance = deltTime * this._moveSpeed;
 
-        let tiledOffset = this._mainLayer.getPositionAt(this._tiledPos);
-        let curWorldX = tiledOffset.x + Map.offsetX;
-        let curWorldY = tiledOffset.y + Map.offsetY;
+        let tiledsWorldPos = this.getWorldPosAtTiled(this._tiledPos.x, this._tiledPos.y);
 
         let x = this._tiledPos.x;
         let y = this._tiledPos.y;
-        if (this.move(--x, y)) {
+        if (!this.canMove(--x, y))
+            return;
+
+        let sourceWorldPos = Object.assign({}, this._worldPos);
+        let targetWorldPos = this.getWorldPosAtTiled(x, y);
+        
+        this._worldPos.x = sourceWorldPos.x - distance;
+        this._worldPos.y = tiledsWorldPos.y;
+        if (sourceWorldPos.x - distance < targetWorldPos.x) {
             this._tiledPos.x = x;
-            this._tiledPos.y = y;
+            this._worldPos.x = targetWorldPos.x;
         }
 
+        this.node.setWorldPosition(this._worldPos.x, this._worldPos.y, 0);
         this._moveTimer = curTimer;
     }
 
@@ -276,17 +311,30 @@ export class Player extends Component {
         if (this._keyPusher != KeyCode.ARROW_DOWN)
             return;
 
+        this.goKeyCode(KeyCode.ARROW_DOWN);
+
         let curTimer = Date.now();
-        if (curTimer - this._moveTimer < MOVE_TIME)
-            return;
+        let deltTime = curTimer - this._moveTimer;
+        let distance = deltTime * this._moveSpeed;
+
+        let tiledsWorldPos = this.getWorldPosAtTiled(this._tiledPos.x, this._tiledPos.y);
 
         let x = this._tiledPos.x;
         let y = this._tiledPos.y;
-        if (this.move(x, ++y)) {
-            this._tiledPos.x = x;
+        if (!this.canMove(x, ++y))
+            return;
+
+        let sourceWorldPos = Object.assign({}, this._worldPos);
+        let targetWorldPos = this.getWorldPosAtTiled(x, y);
+
+        this._worldPos.x = tiledsWorldPos.x;
+        this._worldPos.y = sourceWorldPos.y - distance;
+        if (sourceWorldPos.y - distance < targetWorldPos.y) {
             this._tiledPos.y = y;
+            this._worldPos.y = targetWorldPos.y;
         }
 
+        this.node.setWorldPosition(this._worldPos.x, this._worldPos.y, 0);
         this._moveTimer = curTimer;
     }
 
@@ -297,16 +345,28 @@ export class Player extends Component {
         this.goKeyCode(KeyCode.ARROW_RIGHT);
 
         let curTimer = Date.now();
-        if (curTimer - this._moveTimer < MOVE_TIME)
-            return;
+        let deltTime = curTimer - this._moveTimer;
+        let distance = deltTime * this._moveSpeed;
+
+        let tiledsWorldPos = this.getWorldPosAtTiled(this._tiledPos.x, this._tiledPos.y);
 
         let x = this._tiledPos.x;
         let y = this._tiledPos.y;
-        if (this.move(++x, y)) {
+        if (!this.canMove(++x, y))
+            return;
+
+        console.log("move distance:", deltTime, distance);
+        let sourceWorldPos = Object.assign({}, this._worldPos);
+        let targetWorldPos = this.getWorldPosAtTiled(x, y);
+
+        this._worldPos.x = sourceWorldPos.x + distance;
+        this._worldPos.y = tiledsWorldPos.y;
+        if (sourceWorldPos.x + distance > targetWorldPos.x) {
             this._tiledPos.x = x;
-            this._tiledPos.y = y;
+            this._worldPos.x = targetWorldPos.x;
         }
 
+        this.node.setWorldPosition(this._worldPos.x, this._worldPos.y, 0);
         this._moveTimer = curTimer;
     }
 
