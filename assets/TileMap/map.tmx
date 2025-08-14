@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="9" height="15" tilewidth="32" tileheight="32" infinite="0" nextlayerid="9" nextobjectid="10">
+<map version="1.8" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="9" height="15" tilewidth="32" tileheight="32" infinite="0" nextlayerid="9" nextobjectid="10">
  <tileset firstgid="1" source="bomber1.tsx"/>
  <tileset firstgid="4" source="bomber2.tsx"/>
  <layer id="1" name="back" width="9" height="15" tintcolor="#ffffff">
@@ -79,17 +79,17 @@
 </data>
  </layer>
  <objectgroup id="6" name="object">
-  <object id="1" name="player" x="33.8629" y="32.8777" width="26.8999" height="25.9036">
+  <object id="1" name="player" x="35.3629" y="34.8777" width="24.8999" height="23.4036">
    <properties>
     <property name="type" type="int" value="0"/>
    </properties>
   </object>
-  <object id="2" name="enemy" x="225.166" y="32.8814" width="26.8999" height="26.8999">
+  <object id="2" name="enemy" x="228.166" y="34.8814" width="25.3999" height="24.8999">
    <properties>
     <property name="type" type="int" value="1"/>
    </properties>
   </object>
-  <object id="3" name="enemy" x="225.155" y="417.44" width="28.8925" height="26.8999">
+  <object id="3" name="enemy" x="226.655" y="418.44" width="25.8925" height="23.8999">
    <properties>
     <property name="type" type="int" value="1"/>
    </properties>

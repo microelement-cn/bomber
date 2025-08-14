@@ -8,9 +8,9 @@ import { Bettle } from "./bettle";
 @ccclass('Map')
 export class Map extends Component {
     @property
-    static offsetX: number = 36;
+    static offsetX: number = 50;
     @property
-    static offsetY: number = 80;
+    static offsetY: number = 82;
 
     @property(Prefab)
     playerPrefab: Prefab = null!;
@@ -68,7 +68,8 @@ export class Map extends Component {
         let tilesPos = this.getTiledPos(offset);
         let worldPos = this.mainLayer.getPositionAt(tilesPos);
         player.setWorldPosition(Map.offsetX + worldPos.x, Map.offsetY + worldPos.y, 0);
-
+        let realPos = new Vec2(Map.offsetX + worldPos.x, Map.offsetY + worldPos.y);
+        console.log(realPos);
         this.compPlayer = player.getComponent(Player);
         this.compPlayer.init(tilesPos, this.mainLayer, this.woodLayer, this.ballbombPrefab, this.efftbombPrefab);
     }

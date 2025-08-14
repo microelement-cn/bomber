@@ -9,7 +9,7 @@ let MOVE_TIME = 100;
 
 @ccclass('player')
 export class Player extends Component {
-
+    _keyState: Record<number, boolean> = {};
     _counter: number = 0;
     _moveSpeed: number = 0.1;
     _keyPusher: number = 0;
@@ -171,6 +171,7 @@ export class Player extends Component {
     }
 
     onKeyDown(event: EventKeyboard) {
+        this._keyState[event.keyCode] = true;
         switch (event.keyCode) {
             case KeyCode.KEY_A:
             case KeyCode.ARROW_LEFT:
@@ -242,6 +243,7 @@ export class Player extends Component {
     }
 
     onKeyUp(event: EventKeyboard) {
+        this._keyState[event.keyCode] = false;
         switch (event.keyCode) {
             case KeyCode.KEY_A:
             case KeyCode.ARROW_LEFT:
@@ -260,7 +262,6 @@ export class Player extends Component {
                 this.goUpOver();
                 break;
             case KeyCode.SPACE:
-                //this.dropBomb();
                 break;
             default:
                 break;
@@ -290,15 +291,17 @@ export class Player extends Component {
 
         let x = this._tiledPos.x;
         let y = this._tiledPos.y;
-        if (!this.canMove(--x, y))
+        if (!this.canMove(--x, y)) {
+            this._moveTimer = curTimer;
             return;
+        }
 
         let sourceWorldPos = Object.assign({}, this._worldPos);
         let targetWorldPos = this.getWorldPosAtTiled(x, y);
         
         this._worldPos.x = sourceWorldPos.x - distance;
         this._worldPos.y = tiledsWorldPos.y;
-        if (sourceWorldPos.x - distance < targetWorldPos.x) {
+        if (this._worldPos.x < targetWorldPos.x) {
             this._tiledPos.x = x;
             this._worldPos.x = targetWorldPos.x;
         }
@@ -321,15 +324,17 @@ export class Player extends Component {
 
         let x = this._tiledPos.x;
         let y = this._tiledPos.y;
-        if (!this.canMove(x, ++y))
+        if (!this.canMove(x, ++y)) {
+            this._moveTimer = curTimer;
             return;
+        }
 
         let sourceWorldPos = Object.assign({}, this._worldPos);
         let targetWorldPos = this.getWorldPosAtTiled(x, y);
 
         this._worldPos.x = tiledsWorldPos.x;
         this._worldPos.y = sourceWorldPos.y - distance;
-        if (sourceWorldPos.y - distance < targetWorldPos.y) {
+        if (this._worldPos.y < targetWorldPos.y) {
             this._tiledPos.y = y;
             this._worldPos.y = targetWorldPos.y;
         }
@@ -352,8 +357,10 @@ export class Player extends Component {
 
         let x = this._tiledPos.x;
         let y = this._tiledPos.y;
-        if (!this.canMove(++x, y))
+        if (!this.canMove(++x, y)) {
+            this._moveTimer = curTimer;
             return;
+        }
 
         console.log("move distance:", deltTime, distance);
         let sourceWorldPos = Object.assign({}, this._worldPos);
@@ -361,7 +368,7 @@ export class Player extends Component {
 
         this._worldPos.x = sourceWorldPos.x + distance;
         this._worldPos.y = tiledsWorldPos.y;
-        if (sourceWorldPos.x + distance > targetWorldPos.x) {
+        if (this._worldPos.x > targetWorldPos.x) {
             this._tiledPos.x = x;
             this._worldPos.x = targetWorldPos.x;
         }
@@ -373,17 +380,33 @@ export class Player extends Component {
     private goUpPressing() {
         if (this._keyPusher != KeyCode.ARROW_UP)
             return;
+        
+        this.goKeyCode(KeyCode.ARROW_UP);
 
         let curTimer = Date.now();
-        if (curTimer - this._moveTimer < MOVE_TIME)
-            return;
+        let deltTime = curTimer - this._moveTimer;
+        let distance = deltTime * this._moveSpeed;
+
+        let tiledsWorldPos = this.getWorldPosAtTiled(this._tiledPos.x, this._tiledPos.y);
 
         let x = this._tiledPos.x;
         let y = this._tiledPos.y;
-        if (this.move(x, --y)) {
-            this._tiledPos.x = x;
-            this._tiledPos.y = y;
+        if (!this.canMove(x, --y)) {
+            this._moveTimer = curTimer;
+            return;
         }
+
+        let sourceWorldPos = Object.assign({}, this._worldPos);
+        let targetWorldPos = this.getWorldPosAtTiled(x, y);
+
+        this._worldPos.x = tiledsWorldPos.x;
+        this._worldPos.y = sourceWorldPos.y + distance;
+        if (this._worldPos.y > targetWorldPos.y) {
+            this._tiledPos.y = y;
+            this._worldPos.y = targetWorldPos.y;
+        }
+
+        this.node.setWorldPosition(this._worldPos.x, this._worldPos.y, 0);
         this._moveTimer = curTimer;
     }
 
@@ -405,8 +428,6 @@ export class Player extends Component {
             case KeyCode.ARROW_UP:
                 this.goUpPressing();
                 break;
-            case KeyCode.SPACE:
-                break;
             default:
                 break;
         }
@@ -415,13 +436,13 @@ export class Player extends Component {
     onLoad() {
         input.on(Input.EventType.KEY_UP, this.onKeyUp, this);
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
-        input.on(Input.EventType.KEY_PRESSING, this.onKeyPressing, this);
+        //input.on(Input.EventType.KEY_PRESSING, this.onKeyPressing, this);
     }
 
     onDestory() {
         input.off(Input.EventType.KEY_UP, this.onKeyUp, this);
         input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
-        input.off(Input.EventType.KEY_PRESSING, this.onKeyPressing, this);
+        //input.off(Input.EventType.KEY_PRESSING, this.onKeyPressing, this);
     }
 
     start() {
@@ -461,6 +482,18 @@ export class Player extends Component {
     }
 
     update(deltaTime: number) {
+        if (this._keyState[KeyCode.KEY_A] || this._keyState[KeyCode.ARROW_LEFT])
+            this.goLeftPressing();
+
+        if (this._keyState[KeyCode.KEY_S] || this._keyState[KeyCode.ARROW_DOWN])
+            this.goDownPressing();
+
+        if (this._keyState[KeyCode.KEY_D] || this._keyState[KeyCode.ARROW_RIGHT])
+            this.goRightPressing();
+
+        if (this._keyState[KeyCode.KEY_W] || this._keyState[KeyCode.ARROW_UP])
+            this.goUpPressing();
+        
         let animation = this.node.getComponent(Animation);
         switch (this._playerState) {
             case PStateType.Player_Idle:
